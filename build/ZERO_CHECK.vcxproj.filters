@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\peng.zhang\Desktop\emeet\3a_algorithm\beam\build\CMakeFiles\2f83116a26a12155a4207228a95ce372\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{0F610B01-270B-3CD2-82B1-696882A062BB}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+^C:\USERS\PENG.ZHANG\DESKTOP\EMEET\3A_ALGORITHM\BEAM\CMAKELISTS.TXT
+setlocal
+C:\vcpkg\downloads\tools\cmake-4.2.3-windows\cmake-4.2.3-windows-x86_64\bin\cmake.exe -SC:/Users/peng.zhang/Desktop/emeet/3a_algorithm/beam -BC:/Users/peng.zhang/Desktop/emeet/3a_algorithm/beam/build --check-stamp-file C:/Users/peng.zhang/Desktop/emeet/3a_algorithm/beam/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
