@@ -15,8 +15,9 @@ extern "C" {
 
 /* 传递给音频回调的用户数据 */
 struct CallbackData {
-    FILE *fp;            /* 输出PCM文件句柄 */
-    int   frames_written;/* 已写入的回调次数，用于统计 */
+    FILE *fp;            /* 输出PCM文件句柄（处理后） */
+    FILE *fp_raw;        /* 输出PCM文件句柄（处理前，ch0原始） */
+    int   frames_written;
 };
 
 static int audio_callback(
@@ -37,6 +38,8 @@ static int audio_callback(
             mic[c][out_frame] = in[s * NUM_CHANNELS + c];
         out_frame++;
     }
+
+    fwrite(mic[0], sizeof(short), 128, d->fp_raw);
 
     short out[128];
     ds_beamforming_process(mic, out);
@@ -79,11 +82,13 @@ int main() {
     /* 打开输出文件，用于保存波束成形后的原始PCM数据 */
     FILE *fp = fopen("output.pcm", "wb");
     if (!fp) { fprintf(stderr, "Cannot open output.pcm\n"); Pa_Terminate(); return 1; }
+    FILE *fp_raw = fopen("input_ch0.pcm", "wb");
+    if (!fp_raw) { fprintf(stderr, "Cannot open input_ch0.pcm\n"); fclose(fp); Pa_Terminate(); return 1; }
 
     /* 初始化波束成形模块（必须在 process 之前调用） */
     ds_beamforming_init();
 
-    CallbackData data = { fp, 0 };
+    CallbackData data = { fp, fp_raw, 0 };
 
     /* 配置输入流参数 */
     PaStreamParameters params{};
@@ -112,9 +117,11 @@ int main() {
     Pa_CloseStream(stream);
     Pa_Terminate();
     fclose(fp);
+    fclose(fp_raw);
 
     /* 提示用户如何将原始PCM转换为WAV格式（需要安装ffmpeg） */
     printf("Wrote %d frames to output.pcm\n", data.frames_written);
     printf("Convert to WAV:  ffmpeg -f s16le -ar 16000 -ac 1 -i output.pcm output.wav\n");
+    printf("Raw ch0 to WAV:  ffmpeg -f s16le -ar 16000 -ac 1 -i input_ch0.pcm input_ch0.wav\n");
     return 0;
 }
