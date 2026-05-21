@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
+#include <windows.h>
 #include <portaudio.h>
 
 /* ds_beamforming.h 是纯C接口，用 extern "C" 包裹避免C++名称修饰问题 */
@@ -62,22 +64,47 @@ int main() {
     printf("=== Input devices ===\n");
     for (int i = 0; i < n; i++) {
         const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
-        if (info->maxInputChannels > 0)
-            printf("  [%2d] %-40s  ch=%d\n", i, info->name, info->maxInputChannels);
+        if (info->maxInputChannels > 0) {
+            /* 尝试将设备名称从 UTF-8 转换为 GBK */
+            wchar_t wname[256];
+            MultiByteToWideChar(CP_UTF8, 0, info->name, -1, wname, 256);
+            char gbkname[256];
+            WideCharToMultiByte(CP_ACP, 0, wname, -1, gbkname, 256, NULL, NULL);
+            printf("  [%2d] %-40s  ch=%d\n", i, gbkname, info->maxInputChannels);
+        }
     }
     printf("\n");
 
-    /* 自动选择第一个支持7通道输入的设备 */
+    /* 让用户选择设备 */
     int dev = -1;
-    for (int i = 0; i < n; i++) {
-        if (Pa_GetDeviceInfo(i)->maxInputChannels >= NUM_CHANNELS) { dev = i; break; }
+    while (dev < 0 || dev >= n) {
+        printf("Select device index: ");
+        if (scanf("%d", &dev) != 1) {
+            fprintf(stderr, "Invalid input\n");
+            Pa_Terminate();
+            return 1;
+        }
+        /* 清除输入缓冲区 */
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+        
+        if (dev >= 0 && dev < n) {
+            const PaDeviceInfo *info = Pa_GetDeviceInfo(dev);
+            if (info->maxInputChannels < NUM_CHANNELS) {
+                printf("Device only has %d channels, need %d. Try again.\n", 
+                       info->maxInputChannels, NUM_CHANNELS);
+                dev = -1;
+            }
+        }
     }
-    if (dev < 0) {
-        fprintf(stderr, "No 7-channel input device found.\n");
-        Pa_Terminate();
-        return 1;
-    }
-    printf("Using device [%d]: %s\n\n", dev, Pa_GetDeviceInfo(dev)->name);
+    
+    /* 显示选择的设备名称（处理乱码） */
+    const PaDeviceInfo *sel_info = Pa_GetDeviceInfo(dev);
+    wchar_t wname[256];
+    MultiByteToWideChar(CP_UTF8, 0, sel_info->name, -1, wname, 256);
+    char gbkname[256];
+    WideCharToMultiByte(CP_ACP, 0, wname, -1, gbkname, 256, NULL, NULL);
+    printf("Using device [%d]: %s\n\n", dev, gbkname);
 
     /* 打开输出文件，用于保存波束成形后的原始PCM数据 */
     FILE *fp = fopen("output.pcm", "wb");
@@ -112,16 +139,22 @@ int main() {
     printf("Recording... press Enter to stop.\n");
     getchar();
 
-    /* 停止并释放资源 */
-    Pa_StopStream(stream);
-    Pa_CloseStream(stream);
-    Pa_Terminate();
-    fclose(fp);
-    fclose(fp_raw);
+    /* 自动将PCM转换为WAV格式 */
+    char cmd[256];
 
-    /* 提示用户如何将原始PCM转换为WAV格式（需要安装ffmpeg） */
-    printf("Wrote %d frames to output.pcm\n", data.frames_written);
-    printf("Convert to WAV:  ffmpeg -f s16le -ar 16000 -ac 1 -i output.pcm output.wav\n");
-    printf("Raw ch0 to WAV:  ffmpeg -f s16le -ar 16000 -ac 1 -i input_ch0.pcm input_ch0.wav\n");
+    /* 转换波束成形后的输出 */
+    sprintf(cmd, "ffmpeg -y -f s16le -ar 16000 -ac 1 -i output.pcm output.wav");
+    if (system(cmd) == 0) {
+        printf("Converted output.pcm -> output.wav\n");
+    } else {
+        printf("Warning: ffmpeg not found, keeping PCM file\n");
+    }
+
+    /* 转换原始第一路麦克风 */
+    sprintf(cmd, "ffmpeg -y -f s16le -ar 16000 -ac 1 -i input_ch0.pcm input_ch0.wav");
+    if (system(cmd) == 0) {
+        printf("Converted input_ch0.pcm -> input_ch0.wav\n");
+    }
+
     return 0;
 }

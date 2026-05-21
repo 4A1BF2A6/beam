@@ -1,0 +1,4 @@
+LIBRARY ds_bf
+EXPORTS
+    ds_beamforming_init
+    ds_beamforming_process
