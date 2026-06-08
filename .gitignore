@@ -8,3 +8,6 @@ build/
 *.dll
 *.pcm
 *.wav
+
+# Linux 编译产物
+*.so
