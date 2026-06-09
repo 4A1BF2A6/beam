@@ -177,18 +177,19 @@ void tdoa_process(){
                 xcorr_value[i - (2 * N2_LEN - (MARGIN_FRAMES + 1))] = (float)(result[i]);
             }
 
-            /* 在xcorr_value[1..2*MARGIN_FRAMES-1]范围内搜索峰值
-             * 跳过index=0（时延=0附近存在不连续性，容易误判） */
-            float max_value = 0.0f;
-            int max_index = 0.0f;
-            for(i = 1; i < 2*MARGIN_FRAMES; i++){
+            /* 在xcorr_value[0..2*MARGIN_FRAMES]范围内搜索峰值（含两端，覆盖 ±MARGIN_FRAMES）。
+             * 原实现循环上界 < 2*MARGIN_FRAMES 漏掉 +MARGIN_FRAMES-1、+MARGIN_FRAMES 两格；
+             * max_value 初值改为足够负，避免负相关峰被错过。 */
+            float max_value = -1e30f;
+            int max_index = MARGIN_FRAMES + 1;  /* 缺省指向 lag=0 */
+            for(i = 0; i <= 2*MARGIN_FRAMES; i++){
                 if(xcorr_value[i] > max_value){
                     max_value = xcorr_value[i];
                     max_index = i;
                 }
             }
             /* max_index 相对于中心点（MARGIN_FRAMES+1）的偏移即为时延（有符号） */
-            best_delay_index[channel_count] = max_index - MARGIN_FRAMES - 1;
+            best_delay_index[channel_count] = max_index - (MARGIN_FRAMES + 1);
             best_delay_value[channel_count] = max_value;
         }
         else{
